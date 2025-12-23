@@ -34,12 +34,21 @@ const AnalysisEditor: React.FC<AnalysisEditorProps> = ({ analysis, onAnalysisCha
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">视觉关键词 (控制风格一致性)</label>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">视觉关键词 (风格控制)</label>
             <textarea
               className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-20 text-sm"
               placeholder="例如: 哑光黑, 碳纤维纹理, 冷色调..."
               value={analysis.visualKeywords.join(', ')}
               onChange={(e) => handleChange('visualKeywords', e.target.value.split(',').map(s => s.trim()))}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">使用场景/具体动作</label>
+            <textarea
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 text-sm"
+              placeholder="例如: 双手持握, 放在发光的底座上, 正在被倒入液体..."
+              value={analysis.usageActions.join(', ')}
+              onChange={(e) => handleChange('usageActions', e.target.value.split(',').map(s => s.trim()))}
             />
           </div>
         </div>
@@ -49,7 +58,7 @@ const AnalysisEditor: React.FC<AnalysisEditorProps> = ({ analysis, onAnalysisCha
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">反推场景提示词 (Environment Prompt)</label>
             <textarea
-              className="w-full px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-36 text-sm italic font-serif"
+              className="w-full px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-52 text-sm italic font-serif"
               placeholder="输入场景英文描述..."
               value={analysis.suggestedBackground}
               onChange={(e) => handleChange('suggestedBackground', e.target.value)}
@@ -71,7 +80,7 @@ const AnalysisEditor: React.FC<AnalysisEditorProps> = ({ analysis, onAnalysisCha
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">应用用途</label>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">应用场景 (概括)</label>
             <input
               type="text"
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
@@ -96,7 +105,7 @@ const AnalysisEditor: React.FC<AnalysisEditorProps> = ({ analysis, onAnalysisCha
         disabled={isGenerating}
         className="w-full mt-4 py-4 bg-slate-900 text-white font-bold rounded-xl shadow-xl hover:bg-black active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
       >
-        {isGenerating ? "生成中，请稍候..." : "生成 3x3 专业分镜提示词"}
+        {isGenerating ? "正在构建 3x3 分镜系统..." : "生成 3x3 专业分镜提示词"}
       </button>
     </div>
   );

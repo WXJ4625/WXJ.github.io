@@ -3,10 +3,11 @@ export interface ProductAnalysis {
   name: string;
   details: string[];
   usage: string;
+  usageActions: string[]; // 新增：具体的使用动作或场景描述
   targetAudience: string;
   materialFeatures: string[];
-  visualKeywords: string[]; // 新增：核心视觉关键词
-  suggestedBackground: string; // 新增：反推的建议背景
+  visualKeywords: string[];
+  suggestedBackground: string;
 }
 
 export interface StoryboardShot {
