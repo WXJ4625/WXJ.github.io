@@ -1,5 +1,5 @@
 {
-  "name": "Copy of StoryBoard AI - Pro Visual Planner",
+  "name": "产品分镜输出",
   "description": "An AI-powered storyboard generator that analyzes product images to create cohesive 3x3 grid visual prompts for cinematic and commercial production.",
   "requestFramePermissions": [
     "camera"
