@@ -2,7 +2,6 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { ProductAnalysis, StoryboardResponse, Scenario } from "../types";
 
-// Note: GoogleGenAI instance for Veo is created dynamically to ensure latest API key
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function analyzeProduct(images: string[]): Promise<ProductAnalysis> {
@@ -98,7 +97,9 @@ export async function generateStoryboard(
 }
 
 export async function generateVideo(prompt: string): Promise<string> {
-  const ai = getAIClient();
+  // CRITICAL: New instance right before the call for up-to-date API key
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   let operation = await ai.models.generateVideos({
     model: 'veo-3.1-fast-generate-preview',
     prompt: prompt,
@@ -109,16 +110,15 @@ export async function generateVideo(prompt: string): Promise<string> {
     }
   });
 
-  // Long polling for video completion
   while (!operation.done) {
     await new Promise(resolve => setTimeout(resolve, 10000));
-    operation = await ai.operations.getVideosOperation({operation: operation});
+    // Polling also needs fresh client as per guidelines
+    const aiPoll = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    operation = await aiPoll.operations.getVideosOperation({ operation: operation });
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-  if (!downloadLink) throw new Error("Video generation failed - no URI");
+  if (!downloadLink) throw new Error("Video generation failed");
 
-  const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
+  return `${downloadLink}&key=${process.env.API_KEY}`;
 }

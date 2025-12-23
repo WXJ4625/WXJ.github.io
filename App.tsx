@@ -7,15 +7,14 @@ import AnalysisEditor from './components/AnalysisEditor';
 import StoryboardResult from './components/StoryboardResult';
 import VideoConsole from './components/VideoConsole';
 
-// Fix: Define the AIStudio interface and use it for the window.aistudio property with the readonly modifier to match the global declaration.
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
     openSelectKey: () => Promise<void>;
   }
-
   interface Window {
-    readonly aistudio: AIStudio;
+    // Removed 'readonly' modifier to match other declarations of 'aistudio'
+    aistudio: AIStudio;
   }
 }
 
@@ -27,9 +26,10 @@ const App: React.FC = () => {
   const [scenario, setScenario] = useState<Scenario>(Scenario.Cinematic);
   const [storyboard, setStoryboard] = useState<StoryboardResponse | null>(null);
   
-  const [videoCount, setVideoCount] = useState(1);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  // Video States
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  const [videoCount, setVideoCount] = useState(1);
+  const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 
   const handleImagesChange = async (newImages: string[]) => {
     setImages(newImages);
@@ -40,7 +40,7 @@ const App: React.FC = () => {
         setAnalysis(result);
       } catch (error) {
         console.error("Analysis failed", error);
-        alert("图片分析失败，请稍后重试。");
+        alert("图片分析失败，请检查网络或图片格式。");
       } finally {
         setIsAnalyzing(false);
       }
@@ -49,7 +49,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerateStoryboard = async () => {
     if (!analysis) return;
     setIsGenerating(true);
     try {
@@ -57,50 +57,61 @@ const App: React.FC = () => {
       setStoryboard(result);
     } catch (error) {
       console.error("Storyboard generation failed", error);
-      alert("分镜生成失败，请检查 API 配置。");
+      alert("分镜生成失败，请稍后重试。");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleStartVideoGeneration = async () => {
-    if (!storyboard) return;
+  const handleGenerateVideos = async () => {
+    if (!storyboard || !analysis) return;
 
-    // Veo API Key Check
-    const hasKey = await window.aistudio.hasSelectedApiKey();
-    if (!hasKey) {
-      await window.aistudio.openSelectKey();
-      // Proceeding assuming user selected a key as per instructions
+    // Check for API Key (Mandatory for Veo)
+    if (window.aistudio) {
+      const selected = await window.aistudio.hasSelectedApiKey();
+      if (!selected) {
+        await window.aistudio.openSelectKey();
+        // Assume success to avoid race condition
+      }
     }
 
-    setIsGeneratingVideo(true);
+    setIsGeneratingVideos(true);
     
-    // Synthesize Video Prompt from Storyboard
-    const videoPrompt = `A 15-second cinematic high-quality commercial video for ${analysis?.name}. 
-    Environment: ${analysis?.suggestedBackground}. 
-    Sequence: ${storyboard.shots.map(s => s.descriptionEn).join(" Transitioning into ")}. 
-    Strictly maintain the product structure, materials, and lighting consistency throughout all shots. 
-    Transitions are smooth, seamless, and fluid. Photorealistic, 8K details.`;
+    // Add pending placeholders
+    const newPending: GeneratedVideo[] = Array.from({ length: videoCount }).map(() => ({
+      id: Math.random().toString(36).substring(7),
+      status: 'pending',
+      url: ''
+    }));
+    setVideos(prev => [...newPending, ...prev]);
 
-    const newVideos: GeneratedVideo[] = [];
-    for (let i = 0; i < videoCount; i++) {
-      const id = Math.random().toString(36).substr(2, 9);
-      newVideos.push({ id, url: '', status: 'pending', prompt: videoPrompt });
-    }
-    setVideos(prev => [...newVideos, ...prev]);
-
-    // Process queue
-    for (const v of newVideos) {
+    // Process each video in the queue
+    for (const v of newPending) {
       try {
-        const videoUrl = await generateVideo(v.prompt);
-        setVideos(current => current.map(item => item.id === v.id ? { ...item, url: videoUrl, status: 'completed' } : item));
-      } catch (err) {
-        console.error("Video generation error", err);
-        setVideos(current => current.map(item => item.id === v.id ? { ...item, status: 'failed' } : item));
+        // Build a strong prompt for video consistency
+        const randomShot = storyboard.shots[Math.floor(Math.random() * storyboard.shots.length)];
+        const videoPrompt = `A 15-second cinematic product video for ${analysis.name}. 
+          Scene description: ${randomShot.descriptionEn}. 
+          Keywords: ${analysis.visualKeywords.join(", ")}. 
+          Environment: ${analysis.suggestedBackground}. 
+          Strictly maintain the product's structure and materials as shown in references. 
+          Fluid camera movement, 8K resolution, high-end commercial quality.`;
+
+        const videoUrl = await generateVideo(videoPrompt);
+        setVideos(prev => prev.map(item => item.id === v.id ? { ...item, status: 'completed', url: videoUrl } : item));
+      } catch (error: any) {
+        console.error("Video generation error", error);
+        
+        // Handle specific "entity not found" error which usually means the key project isn't set up right
+        if (error.message?.includes("Requested entity was not found")) {
+          alert("检测到 API 项目配置异常。请确保您选择的是一个已开启计费功能的 Paid 项目。");
+        }
+        
+        setVideos(prev => prev.map(item => item.id === v.id ? { ...item, status: 'failed' } : item));
       }
     }
     
-    setIsGeneratingVideo(false);
+    setIsGeneratingVideos(false);
   };
 
   return (
@@ -110,7 +121,7 @@ const App: React.FC = () => {
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
             StoryBoard <span className="text-blue-600">Pro</span>
           </h1>
-          <p className="text-slate-500 text-lg">AI 驱动的一站式产品分镜与视频生成系统</p>
+          <p className="text-slate-500 text-lg">AI 驱动的产品视觉分析与分镜生产系统</p>
         </div>
 
         <ImageUploader 
@@ -124,14 +135,14 @@ const App: React.FC = () => {
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:-.3s]"></div>
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:-.5s]"></div>
-            <span className="text-slate-600 font-medium">正在深度分析视觉资产...</span>
+            <span className="text-slate-600 font-medium">深度视觉特征分析中...</span>
           </div>
         )}
 
         {analysis && !isAnalyzing && (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
-              <h2 className="text-lg font-bold text-slate-800 mb-4">选择分镜风格场景</h2>
+              <h2 className="text-lg font-bold text-slate-800 mb-4">选择分镜艺术风格</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.values(Scenario).map((s) => (
                   <button
@@ -152,7 +163,7 @@ const App: React.FC = () => {
             <AnalysisEditor 
               analysis={analysis} 
               onAnalysisChange={setAnalysis} 
-              onGenerate={handleGenerate}
+              onGenerate={handleGenerateStoryboard}
               isGenerating={isGenerating}
             />
           </div>
@@ -164,8 +175,8 @@ const App: React.FC = () => {
             <VideoConsole 
               videoCount={videoCount}
               setVideoCount={setVideoCount}
-              onGenerate={handleStartVideoGeneration}
-              isGenerating={isGeneratingVideo}
+              onGenerate={handleGenerateVideos}
+              isGenerating={isGeneratingVideos}
               videos={videos}
             />
           </>

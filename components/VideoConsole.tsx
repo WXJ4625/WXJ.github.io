@@ -12,35 +12,33 @@ interface VideoConsoleProps {
 
 const VideoConsole: React.FC<VideoConsoleProps> = ({ videoCount, setVideoCount, onGenerate, isGenerating, videos }) => {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-8 space-y-6">
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
           <h2 className="text-lg font-bold text-slate-800">4. 动态视频生成 (Veo 3.1)</h2>
         </div>
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-slate-500">生成数量 (1-50):</label>
+          <label className="text-sm font-medium text-slate-500">数量:</label>
           <input 
             type="number" 
             min="1" 
             max="50" 
             value={videoCount}
             onChange={(e) => setVideoCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-            className="w-20 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-blue-600"
+            className="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-purple-600"
           />
         </div>
       </div>
 
-      <p className="text-sm text-slate-500">
-        AI 将自动基于分镜逻辑生成 10-15 秒的动态视频。我们将确保每一帧的产品结构高度一致，镜头衔接如行云流水。
-      </p>
-
-      <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-        <p className="text-xs text-purple-700 flex items-start gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 flex gap-3">
+        <div className="text-purple-600 shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
           </svg>
-          注意：视频生成需要 2-5 分钟/个。请确保您的 API Key 已启用计费功能（ai.google.dev/gemini-api/docs/billing）。
+        </div>
+        <p className="text-xs text-purple-700 leading-relaxed">
+          视频生成属于高级功能。点击生成后，系统将引导您选择一个**付费计费项目**的 API Key。每个视频渲染约需 2-5 分钟，生成的视频将保持产品结构的一致性。
         </p>
       </div>
 
@@ -49,37 +47,43 @@ const VideoConsole: React.FC<VideoConsoleProps> = ({ videoCount, setVideoCount, 
         disabled={isGenerating}
         className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
       >
-        {isGenerating ? "正在渲染视频队列..." : "开始一键生成流畅视频"}
+        {isGenerating ? (
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>渲染队列处理中...</span>
+          </div>
+        ) : "开始生成流畅 16:9 视频"}
       </button>
 
       {videos.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-          {videos.map((v, i) => (
+          {videos.map((v) => (
             <div key={v.id} className="relative bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group">
               {v.status === 'pending' ? (
-                <div className="aspect-video flex flex-col items-center justify-center bg-slate-100 space-y-3">
-                  <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-bold text-slate-400">视频 #{videos.length - i} 渲染中...</span>
+                <div className="aspect-video flex flex-col items-center justify-center bg-slate-100/50 space-y-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 border-2 border-purple-200 rounded-full"></div>
+                    <div className="absolute inset-0 w-10 h-10 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendering...</span>
                 </div>
               ) : v.status === 'failed' ? (
-                <div className="aspect-video flex items-center justify-center bg-red-50">
-                  <span className="text-xs text-red-500 font-medium">渲染失败，请检查额度或重试</span>
+                <div className="aspect-video flex items-center justify-center bg-red-50 text-red-500 p-4 text-center">
+                  <span className="text-xs font-medium">生成失败，请检查计费状态或稍后重试</span>
                 </div>
               ) : (
-                <>
+                <div className="relative group">
                   <video src={v.url} controls className="w-full aspect-video object-cover" />
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <a 
-                      href={v.url} 
-                      download={`storyboard-video-${v.id}.mp4`}
-                      className="bg-white/90 p-2 rounded-full shadow-md text-slate-800 hover:text-purple-600"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </a>
-                  </div>
-                </>
+                  <a 
+                    href={v.url} 
+                    download={`storyboard-${v.id}.mp4`}
+                    className="absolute top-2 right-2 p-2 bg-white/90 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-purple-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </a>
+                </div>
               )}
             </div>
           ))}

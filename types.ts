@@ -22,13 +22,6 @@ export interface StoryboardResponse {
   shots: StoryboardShot[];
 }
 
-export interface GeneratedVideo {
-  id: string;
-  url: string;
-  status: 'pending' | 'completed' | 'failed';
-  prompt: string;
-}
-
 export enum Scenario {
   Cinematic = '电影质感',
   Commercial = '商业广告',
@@ -37,4 +30,10 @@ export enum Scenario {
   NatureOutdoor = '自然户外',
   Cyberpunk = '赛博朋克',
   Studio = '专业棚拍'
+}
+
+export interface GeneratedVideo {
+  id: string;
+  url: string;
+  status: 'pending' | 'completed' | 'failed';
 }
