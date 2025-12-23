@@ -2,9 +2,11 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { ProductAnalysis, StoryboardResponse, Scenario } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Note: GoogleGenAI instance for Veo is created dynamically to ensure latest API key
+const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function analyzeProduct(images: string[]): Promise<ProductAnalysis> {
+  const ai = getAIClient();
   const parts = images.map(img => ({
     inlineData: {
       mimeType: "image/jpeg",
@@ -16,8 +18,8 @@ export async function analyzeProduct(images: string[]): Promise<ProductAnalysis>
     作为一名资深视觉分析师，深度分析这些产品图片。
     1. 提取核心视觉细节（如：材质纹理、独特设计元素、色彩比例）。
     2. 分析产品用途和适用环境。
-    3. 提取 3-5 个具体的使用场景或动作描述（如：双手紧握、在办公桌上摆放、户外奔跑中使用等）。
-    4. 根据产品调性，反推一个能最大化展现产品美感的建议背景提示词（英文描述）。
+    3. 提取 3-5 个具体的使用场景或动作描述。
+    4. 根据产品调性，反推一个背景提示词（英文描述）。
     5. 提取 5 个核心视觉关键词。
     请务必使用中文返回文本内容（除英文提示词外）。
   `;
@@ -33,11 +35,11 @@ export async function analyzeProduct(images: string[]): Promise<ProductAnalysis>
           name: { type: Type.STRING },
           details: { type: Type.ARRAY, items: { type: Type.STRING } },
           usage: { type: Type.STRING },
-          usageActions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "具体的使用场景或动作描述" },
+          usageActions: { type: Type.ARRAY, items: { type: Type.STRING } },
           targetAudience: { type: Type.STRING },
           materialFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
           visualKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          suggestedBackground: { type: Type.STRING, description: "建议的背景/环境提示词（英文）" }
+          suggestedBackground: { type: Type.STRING }
         },
         required: ["name", "details", "usage", "usageActions", "targetAudience", "materialFeatures", "visualKeywords", "suggestedBackground"]
       }
@@ -51,6 +53,7 @@ export async function generateStoryboard(
   analysis: ProductAnalysis, 
   scenario: Scenario
 ): Promise<StoryboardResponse> {
+  const ai = getAIClient();
   const prompt = `
     基于以下产品数据生成分镜。
     产品: ${analysis.name}
@@ -60,17 +63,8 @@ export async function generateStoryboard(
     选定背景: ${analysis.suggestedBackground}
     分镜风格: ${scenario}
 
-    请生成 9 个连续的电影化分镜提示词，展示产品及其使用过程。
-    严格遵守以下格式生成开场白（intro）：
-    根据[${analysis.visualKeywords.join(", ")}, ${analysis.materialFeatures.join(", ")}], 生成一张具有凝聚力的[3x3]网格图像，包含在同一环境中的[9]个不同摄像镜头，镜头的第一个和最后一个主体完全一致严格保持人物/物体、服装和光线的一致性，[8K]分辨率，[16:9]画幅。背景设定为：${analysis.suggestedBackground}。分镜应体现动作：${analysis.usageActions.join("、")}。
-
-    英文版开场白（introEn）：
-    Based on [${analysis.visualKeywords.join(", ")}, ${analysis.materialFeatures.join(", ")}], generate a cohesive [3x3] grid image containing [9] different camera shots in the same environment. The first and last shots have identical subjects, maintaining strict consistency in person/object, clothing, and lighting, [8K] resolution, [16:9] aspect ratio. Environment: ${analysis.suggestedBackground}. Narrative focus on: ${analysis.usageActions.join(", ")}.
-
-    要求：
-    1. 9个分镜必须构成一个完整叙事或多角度展示，并将“使用动作”自然融入其中。
-    2. 确保首尾一致性。
-    3. 提供中英文对照。
+    请生成 9 个连续的电影化分镜提示词。
+    严格遵守输出要求，确保分镜衔接紧密，首尾一致。
   `;
 
   const response = await ai.models.generateContent({
@@ -101,4 +95,30 @@ export async function generateStoryboard(
   });
 
   return JSON.parse(response.text) as StoryboardResponse;
+}
+
+export async function generateVideo(prompt: string): Promise<string> {
+  const ai = getAIClient();
+  let operation = await ai.models.generateVideos({
+    model: 'veo-3.1-fast-generate-preview',
+    prompt: prompt,
+    config: {
+      numberOfVideos: 1,
+      resolution: '720p',
+      aspectRatio: '16:9'
+    }
+  });
+
+  // Long polling for video completion
+  while (!operation.done) {
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    operation = await ai.operations.getVideosOperation({operation: operation});
+  }
+
+  const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+  if (!downloadLink) throw new Error("Video generation failed - no URI");
+
+  const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }

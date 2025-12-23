@@ -3,7 +3,7 @@ export interface ProductAnalysis {
   name: string;
   details: string[];
   usage: string;
-  usageActions: string[]; // 新增：具体的使用动作或场景描述
+  usageActions: string[];
   targetAudience: string;
   materialFeatures: string[];
   visualKeywords: string[];
@@ -20,6 +20,13 @@ export interface StoryboardResponse {
   intro: string;
   introEn: string;
   shots: StoryboardShot[];
+}
+
+export interface GeneratedVideo {
+  id: string;
+  url: string;
+  status: 'pending' | 'completed' | 'failed';
+  prompt: string;
 }
 
 export enum Scenario {
